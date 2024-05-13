@@ -32,5 +32,6 @@
         ]
       ]
     }
-  ]
+  ],
+  'variables': {'openssl_fips': ''}
 }

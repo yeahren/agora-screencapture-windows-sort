@@ -1,6 +1,6 @@
 {
   "name": "agora-screencapture-windows-sort",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "sort windows from agora screencapture",
   "main": "main.cjs",
   "keywords": [
