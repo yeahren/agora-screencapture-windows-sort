@@ -7,6 +7,8 @@ try {
 }
 
 
-const list = SortWindowsAddon.getWindowsList()
+const list = SortWindowsAddon.getWindowsList([{
+    sourceId: 3
+}])
 
 console.log('t', list)

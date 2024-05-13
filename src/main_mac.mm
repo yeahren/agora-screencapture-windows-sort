@@ -1,80 +1,148 @@
-#include <napi.h>
 #include <Cocoa/Cocoa.h>
+#include <CoreFoundation/CoreFoundation.h>
+#include <napi.h>
+#include <objc/NSObjCRuntime.h>
 #include <string>
+#include <iostream>
+#include <map>
+#include <vector>
+#include <libproc.h>
 
-unsigned long getStringLength(NSString *content){
-  NSUInteger maxLength = [content lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
-  return maxLength;
+struct MyWindowInfo {
+    Napi::Object    coreObject;
+    NSInteger       windowNumber;
+    NSInteger       windowOwnerPID;
+    uint64_t        startTime;
+    bool            isScreen;
+};
+
+std::map<NSInteger, MyWindowInfo> getAllWindowsInfoMap() {
+    std::map<NSInteger, MyWindowInfo> retMap;
+    
+    struct proc_taskallinfo pinfo;
+    memset(&pinfo, 0, sizeof(struct proc_taskallinfo));
+
+    CFArrayRef windowList = CGWindowListCopyWindowInfo(kCGWindowListOptionAll | kCGWindowListExcludeDesktopElements , kCGNullWindowID);
+
+    if (windowList != nullptr) {
+        for (NSMutableDictionary *entry in (__bridge NSArray *)windowList) {
+            NSInteger windowOwnerPID = [[entry objectForKey:(id)kCGWindowOwnerPID] integerValue];
+            NSInteger windowNumber = [[entry objectForKey:(id)kCGWindowNumber] integerValue];
+            
+            int ret = proc_pidinfo(windowOwnerPID, PROC_PIDTASKALLINFO, 0, &pinfo, sizeof(struct proc_taskallinfo));
+
+            if (ret > 0) {
+                MyWindowInfo info;
+                info.windowNumber = windowNumber;
+                info.windowOwnerPID = windowOwnerPID;
+                info.startTime = pinfo.pbsd.pbi_start_tvsec;
+                info.isScreen = false;
+
+                retMap[windowNumber] = info;
+            }
+        }
+
+        CFRelease(windowList);
+    }
+        
+    return retMap;
 }
 
-napi_value getWindowsList(const Napi::CallbackInfo &info)
+
+Napi::Object getWindowsList(const Napi::CallbackInfo &info)
 {
-  Napi::Env env = info.Env();
-  CFArrayRef windowList = CGWindowListCopyWindowInfo(kCGWindowListOptionAll, kCGNullWindowID);
-  napi_value result;
-  napi_create_array(env, &result);
-  int i = 0;
-  for (NSMutableDictionary *entry in (__bridge NSArray *)windowList)
-  {
-    napi_value ele;
-    napi_create_object(env, &ele);
-    // 窗口Order
-     NSInteger windowOrder = [[entry objectForKey:(id)kCGWindowLayer] integerValue];
-     NSInteger windowOwnerPID = [[entry objectForKey:(id)kCGWindowOwnerPID] integerValue];
-     NSInteger windowNumber = [[entry objectForKey:(id)kCGWindowNumber] integerValue];
-     NSString *windowName = [entry objectForKey:(__bridge NSString *) kCGWindowName];
-     NSString *windowOwnerName = [entry objectForKey:(__bridge NSString *) kCGWindowOwnerName];
-     NSString *windowTitleName ;
+    Napi::Env env = info.Env();
 
-    //  NSLog(@"Window - Name: %@, length: %lu , %lu ", windowName, [windowName length], getStringLength(windowName));
-    //  NSLog(@"Window - windowOwnerName: %@, length: %lu , %lu", windowOwnerName, [windowOwnerName length], getStringLength(windowOwnerName));
+    int argc = info.Length();
+    if (argc != 1) {
+        Napi::TypeError::New(env, "Invalid number of arguments")
+            .ThrowAsJavaScriptException();
 
-     if(windowName && ![windowName isEqualToString:@""]){
-      windowTitleName = [NSString stringWithFormat:@"%@-%@", windowName, windowOwnerName];
-     }else{
-      windowTitleName =  windowOwnerName;
-     }
-     NSDictionary *windowBounds = [entry objectForKey:( __bridge NSDictionary *) kCGWindowBounds];
-     NSInteger windowX = [[windowBounds objectForKey:@"X"] integerValue];
-     NSInteger windowY = [[windowBounds objectForKey:@"Y"] integerValue];
-     NSInteger windowWidth = [[windowBounds objectForKey:@"Width"] integerValue];
-     NSInteger windowHeight = [[windowBounds objectForKey:@"Height"] integerValue];
-    napi_value order;
-    napi_value nWindowTitleName;
-    napi_value windowPID;
-    napi_value nWindowNumber;
-    napi_value nWindowName;
-    napi_value nWindowOwnerName;
-    napi_value nWindowX;
-    napi_value nWindowY;
-    napi_value nWindowWidth;
-    napi_value nWindowHeight;
-    napi_create_int32(env,windowOrder, &order);
-    napi_create_int32(env,windowOwnerPID, &windowPID);
-    napi_create_int32(env,windowNumber, &nWindowNumber);
-    napi_create_string_utf8(env,[windowTitleName UTF8String],getStringLength(windowTitleName), &nWindowTitleName);
-    napi_create_string_utf8(env,[windowName UTF8String],getStringLength(windowName) , &nWindowName);
-    napi_create_string_utf8(env,[windowOwnerName UTF8String],getStringLength(windowOwnerName), &nWindowOwnerName);
-    napi_create_int32(env,windowX, &nWindowX);
-    napi_create_int32(env,windowY, &nWindowY);
-    napi_create_int32(env,windowWidth, &nWindowWidth);
-    napi_create_int32(env,windowHeight, &nWindowHeight);
-    napi_set_named_property(env, ele, "windowOrder" , order);
-    napi_set_named_property(env, ele, "windowOwnerName" , nWindowOwnerName);
-    napi_set_named_property(env, ele, "windowName" , nWindowName);
-    napi_set_named_property(env, ele, "windowTitleName" , nWindowTitleName);
-    napi_set_named_property(env, ele, "windowPID" , windowPID);
-    napi_set_named_property(env, ele, "windowNumber" , nWindowNumber);
-    napi_set_named_property(env, ele, "windowX" , nWindowX);
-    napi_set_named_property(env, ele, "windowY" , nWindowY);
-    napi_set_named_property(env, ele, "windowWidth" , nWindowWidth);
-    napi_set_named_property(env, ele, "windowHeight" , nWindowHeight);
-    napi_set_element(env, result,i, ele);
-    i++;
-  }
+        return Napi::Array::New(env, 0);
+    }
+    
+    if (!info[0].IsArray()) {
+        Napi::TypeError::New(env, "Argument should be an Array")
+            .ThrowAsJavaScriptException();
 
-  CFRelease(windowList);
-  return result;
+        return Napi::Array::New(env, 0);
+    }
+
+    std::map<NSInteger, MyWindowInfo> allInfosMap = getAllWindowsInfoMap();
+    std::vector<MyWindowInfo> infos;
+    
+    Napi::Array array = info[0].As<Napi::Array>();
+    int length = array.Length();
+
+    for (int i = 0; i < length; i++) {
+        Napi::Value value = array.Get(i);
+
+        if (value.IsObject()) {
+            Napi::Object objectValue = value.As<Napi::Object>();
+            Napi::Value sourceId = objectValue.Get("sourceId");
+            
+            if (!value.IsEmpty() && !value.IsNull() && !value.IsUndefined()) {
+                std::string str_id = sourceId.ToString().Utf8Value();
+                NSInteger curWnd = (NSInteger)std::stoll(str_id);
+
+                auto pIt = allInfosMap.find(curWnd);
+
+                if (pIt != allInfosMap.end()) {
+                    pIt->second.coreObject = objectValue;
+
+                    MyWindowInfo info;
+                    info.coreObject = objectValue;
+                    info.startTime = pIt->second.startTime;
+                    info.windowNumber = pIt->second.windowNumber;
+                    info.windowOwnerPID = pIt->second.windowOwnerPID;
+                    info.isScreen = false;
+
+                    infos.emplace_back(info);
+                }
+                else {
+                    MyWindowInfo info;
+                    info.coreObject = objectValue;
+                    info.isScreen = true;
+                    info.windowNumber = curWnd;
+
+                    infos.emplace_back(info);
+                }
+            }
+        }
+        
+    }
+
+    std::sort(infos.begin(), infos.end(), [](const MyWindowInfo& one, const MyWindowInfo& two) {
+        if (one.isScreen && two.isScreen) {
+            return one.windowNumber < two.windowNumber;
+        }
+
+        if (one.isScreen && !two.isScreen) {
+            return true;
+        }
+
+        if (!one.isScreen && two.isScreen) {
+            return false;
+        }
+
+        if (!one.isScreen && !two.isScreen) {
+                if (one.windowOwnerPID != two.windowOwnerPID) {
+                return one.startTime > two.startTime;
+            }
+            else {
+                return one.windowNumber > two.windowNumber;
+            }
+        }
+    });
+
+    Napi::Array ret_array = Napi::Array::New(env);
+
+    for(size_t i = 0; i < infos.size(); ++i) {
+        ret_array.Set(ret_array.Length(), infos[i].coreObject);
+    }
+
+  return ret_array;
+
 };
 
 Napi::Object init(Napi::Env env, Napi::Object exports)
@@ -85,4 +153,4 @@ Napi::Object init(Napi::Env env, Napi::Object exports)
   return exports;
 };
 
-NODE_API_MODULE(VincentAddon, init);
+NODE_API_MODULE(SortWindowsAddon, init);
