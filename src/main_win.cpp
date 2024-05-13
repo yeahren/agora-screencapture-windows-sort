@@ -28,6 +28,7 @@ Napi::Value getWindowsList(const Napi::CallbackInfo &info)
     Napi::Object coreInfo;
     ULONGLONG processStartUnixTime;
     DWORD processId;
+    bool isScreen;
   };
 
   std::vector<MyScreenCaptureSourceInfo> infos;
@@ -50,7 +51,7 @@ Napi::Value getWindowsList(const Napi::CallbackInfo &info)
         FILETIME createTime, exitTime, kernelTime, userTime;
         if (GetProcessTimes(handle, &createTime, &exitTime, &kernelTime, &userTime))
         {
-          ULARGE_INTEGER startTime;
+            ULARGE_INTEGER startTime;
             startTime.LowPart = createTime.dwLowDateTime;
             startTime.HighPart = createTime.dwHighDateTime;
 
@@ -60,8 +61,19 @@ Napi::Value getWindowsList(const Napi::CallbackInfo &info)
             myInfo.coreInfo = objectValue;
             myInfo.processId = dwProcessId;
             myInfo.processStartUnixTime = unixTime;
+            myInfo.isScreen = false;
 
             infos.emplace_back(myInfo);
+        }
+        else {
+            MyScreenCaptureSourceInfo myInfo;
+            myInfo.coreInfo = objectValue;
+            myInfo.processId = 0;
+            myInfo.processStartUnixTime = 0;
+            myInfo.isScreen = true;
+
+            infos.emplace_back(myInfo);
+
         }
 
         CloseHandle(handle);
@@ -70,12 +82,27 @@ Napi::Value getWindowsList(const Napi::CallbackInfo &info)
   }
 
   std::sort(infos.begin(), infos.end(), [](const MyScreenCaptureSourceInfo& one, const MyScreenCaptureSourceInfo& two) {
-    if (one.processId != two.processId) {
-      return one.processStartUnixTime > two.processStartUnixTime;
+    if (one.isScreen && two.isScreen) {
+        return one.processId < two.processId;
     }
-    else {
-      return one.processId > two.processId;
+
+    if (one.isScreen && !two.isScreen) {
+        return true;
     }
+
+    if (!one.isScreen && two.isScreen) {
+        return false;
+    }
+
+    if (!one.isScreen && !two.isScreen) {
+        if (one.processId != two.processId) {
+            return one.processStartUnixTime > two.processStartUnixTime;
+        }
+        else {
+            return one.processId > two.processId;
+        }      
+    }
+    
   });
 
   Napi::Array ret_array = Napi::Array::New(env);
