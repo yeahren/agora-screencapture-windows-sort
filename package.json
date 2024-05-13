@@ -1,0 +1,28 @@
+{
+  "name": "agora-screencapture-windows-sort",
+  "version": "1.0.0",
+  "description": "sort windows from agora screencapture",
+  "main": "main.cjs",
+  "keywords": [
+    "agora"
+  ],
+  "author": "peter.liu@ai4geeks.com",
+  "license": "MIT",
+  "dependencies": {
+    "node-addon-api": "^7.0.0"
+  },
+  "scripts": {
+    "start": "node main.cjs",
+    "install": "node-gyp rebuild",
+    "configure": "node-gyp configure",
+    "build:dev": "node-gyp build --debug",
+    "build": "node-gyp build",
+    "rebuild:dev": "node-gyp rebuild --debug",
+    "rebuild": "node-gyp rebuild",
+    "clean": "node-gyp clean"
+ },
+ "exclude": [
+  "build",
+  "node_modules",
+  "test"]
+}
