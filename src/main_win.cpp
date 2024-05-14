@@ -86,11 +86,11 @@ Napi::Value getWindowsList(const Napi::CallbackInfo &info)
     }
 
     if (one.isScreen && !two.isScreen) {
-        return false;
+        return true;
     }
 
     if (!one.isScreen && two.isScreen) {
-        return true;
+        return false;
     }
 
     if (!one.isScreen && !two.isScreen) {
