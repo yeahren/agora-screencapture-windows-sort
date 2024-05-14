@@ -1,8 +1,6 @@
 #### Install
 ```bash
-npm install agora-screencapture-windows-sort
-# or
-npm install --openssl_fips=''
+$ npm install agora-screencapture-windows-sort
 ```
 #### Demo
 ```javascript
@@ -11,14 +9,20 @@ const { createAgoraRtcEngine } = require("agora-electron-sdk");
 
 // ... init Engine
 const rtcEngine = createAgoraRtcEngine();
-this.rtcEngine = rtcEngine
+
 
 //... sort sourcesList
-const sourcesList= this.rtcEngine.getScreenCaptureSources(
+const sourcesList= rtcEngine.getScreenCaptureSources(
         { width: 1920, height: 1080 },
         { width: 32, height: 32 },
         true
         )
 const sortedSourcesList = getWindowList(sourceList)
 
+```
+
+#### FAQ
+```bash
+# if got issue about openssl_fips=''
+npm install --openssl_fips=''
 ```
