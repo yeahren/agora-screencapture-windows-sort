@@ -73,7 +73,6 @@ Napi::Value getWindowsList(const Napi::CallbackInfo &info)
             myInfo.isScreen = true;
 
             infos.emplace_back(myInfo);
-
         }
 
         CloseHandle(handle);
@@ -83,15 +82,15 @@ Napi::Value getWindowsList(const Napi::CallbackInfo &info)
 
   std::sort(infos.begin(), infos.end(), [](const MyScreenCaptureSourceInfo& one, const MyScreenCaptureSourceInfo& two) {
     if (one.isScreen && two.isScreen) {
-        return one.processId < two.processId;
+        return one.processId <= two.processId;
     }
 
     if (one.isScreen && !two.isScreen) {
-        return true;
+        return false;
     }
 
     if (!one.isScreen && two.isScreen) {
-        return false;
+        return true;
     }
 
     if (!one.isScreen && !two.isScreen) {

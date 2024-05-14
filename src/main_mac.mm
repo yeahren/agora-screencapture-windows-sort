@@ -126,7 +126,7 @@ Napi::Object getWindowsList(const Napi::CallbackInfo &info)
         }
 
         if (!one.isScreen && !two.isScreen) {
-                if (one.windowOwnerPID != two.windowOwnerPID) {
+            if (one.windowOwnerPID != two.windowOwnerPID) {
                 return one.startTime > two.startTime;
             }
             else {

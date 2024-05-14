@@ -8,7 +8,7 @@ try {
 
 
 const list = SortWindowsAddon.getWindowsList([{
-    sourceId: 3
+    sourceId: 0
 }])
 
 console.log('t', list)

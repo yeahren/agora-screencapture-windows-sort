@@ -11,6 +11,10 @@
   "dependencies": {
     "node-addon-api": "^7.0.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yeahren/agora-screencapture-windows-sort"
+  },
   "scripts": {
     "start": "node main.cjs",
     "install": "node-gyp rebuild",
